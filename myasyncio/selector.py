@@ -13,7 +13,7 @@ class Event(object):
         self.due_time = datetime.utcnow() + timedelta(seconds=delay)
 
 def listen_io(ioid, fut):
-    ios[ioid] = Event(ioid, fut, random.randint(0, 2))
+    ios[ioid] = Event(ioid, fut, random.randint(1, 2))
 
 def recv_io(ioid):
     return ioid + 10000
@@ -26,7 +26,6 @@ class Selector(object):
         ready_ioids = []
         for ioid, event in ios.items():
             if event.due_time < datetime.utcnow():
-                print("----")
                 ready_ioids.append(ioid)
 
         ready = []

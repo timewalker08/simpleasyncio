@@ -1,4 +1,5 @@
 
+from datetime import datetime, timedelta
 from functools import partial
 
 from future import Future
@@ -14,12 +15,20 @@ class Handle(object):
     def run(self):
         self.callback()
 
+class TimerHandle(Handle):
+    def __init__(self, when, loop, callback):
+        self._when = when
+        super(TimerHandle, self).__init__(loop, callback)
+
+    def is_ready(self):
+        return self._when < datetime.utcnow()
 
 class Eventloop(object):
     instance = None
 
     def __init__(self):
         self._ready = []
+        self._scheduled = []
         self._selector = Selector()
         self._stopping = False
 
@@ -32,6 +41,10 @@ class Eventloop(object):
     def call_soon(self, callback):
         self._ready.append(Handle(self, callback))
 
+    def call_later(self, delay, callback):
+        when = datetime.utcnow() + timedelta(seconds=delay)
+        self._scheduled.append(TimerHandle(when, self, callback))
+
     def run_forever(self):
         while True:
             self.run_once()
@@ -42,7 +55,13 @@ class Eventloop(object):
         event_list = self._selector.select()
         if event_list:
             for _, handle in event_list:
-                handle.run()
+                self._ready.append(handle)
+
+        ready = [item for item in self._scheduled if item.is_ready()]
+        for item in ready:
+            self._scheduled.remove(item)
+        self._ready.extend(ready)
+
         for handle in self._ready:
             handle.run()
         self._ready = []
